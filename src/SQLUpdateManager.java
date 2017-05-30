@@ -1,5 +1,11 @@
+﻿import java.sql.Array;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  * JDBC Aufgabe 3d
@@ -65,8 +71,13 @@ public class SQLUpdateManager  {
      */
     public SQLUpdateManager() throws SQLException {
         // TODO begin
+    	String host = "jdbc:postgresql://localhost:5432/postgres";
+    	String userName = "postgres";
+    	String password = "duathvagol1";
+    	connection = null;
+		try {
+			connection = DriverManager.getConnection(host, userName, password);
         // TODO end
-
         if (!hasTable("farbe")) {
             update();
         } else {
@@ -75,6 +86,10 @@ public class SQLUpdateManager  {
             throw new SQLException(err);
         }
         // TODO begin
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         // TODO end
     }
 
@@ -108,8 +123,43 @@ public class SQLUpdateManager  {
      */
     private void update() throws SQLException {
         System.out.println("Updating database layout ...");
-
         // TODO begin
+        PreparedStatement statement = connection.prepareStatement(
+        		"CREATE TABLE farbe (farbnr INTEGER CONSTRAINT pk_farbe PRIMARY KEY, rgb INTEGER,name CHAR(10))");
+        statement.executeUpdate();
+        statement.close();
+		System.out.println("test");
+        Statement statementTwo = connection.createStatement();
+        ResultSet resultset = statementTwo.executeQuery(
+				"SELECT DISTINCT farbe FROM teilestamm where not farbe is null");
+        ResultSetMetaData meta = resultset.getMetaData();
+		PreparedStatement statementt = connection.prepareStatement(
+				"ALTER TABLE teilestamm ADD COLUMN farbnr INTEGER");
+        statementt.executeUpdate();
+        statementt.close();
+		statementt = connection.prepareStatement(
+				"ALTER TABLE teilestamm ADD CONSTRAINT pk_farbe FOREIGN KEY (farbnr) REFERENCES farbe(farbnr)");
+        statementt.executeUpdate();
+        statementt.close();
+        int currentNr = 0;
+        while(resultset.next()) {
+        	System.out.println(resultset.getObject(1));
+            PreparedStatement statementhree = connection.prepareStatement("INSERT INTO farbe (farbnr,  name) values(?,?)");
+            statementhree.setInt(1, currentNr);
+            statementhree.setString(2, (String) resultset.getObject(1));
+            statementhree.executeUpdate();
+            statementhree.close();
+            statement = connection.prepareStatement("UPDATE teilestamm SET farbnr = ? WHERE farbe = ?");
+            statement.setInt(1, currentNr);
+            statement.setString(2, (String) resultset.getObject(1));
+            statement.executeUpdate();
+            statement.close();
+            currentNr++;
+        }
+        statement = connection.prepareStatement("ALTER TABLE teilestamm DROP COLUMN farbe");
+        statement.executeUpdate();
+        statement.close();
+        
         // TODO end
     }
 
@@ -121,5 +171,13 @@ public class SQLUpdateManager  {
      */
     public static void main(String[] args) throws SQLException {
         new SQLUpdateManager();
+        Connection connection = SQLConnector.getTestInstance().getConnection();
+        Statement statementTwo = connection.createStatement();
+		System.out.println("test");
+        ResultSet resultset = statementTwo.executeQuery(
+				"SELECT DISTINCT farbnr FROM farbe");
+        while(resultset.next()) {
+        	System.out.println(resultset.getObject(1));
+        }
     }
 }
