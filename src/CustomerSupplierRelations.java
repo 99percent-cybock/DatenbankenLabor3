@@ -1,7 +1,4 @@
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 
 /**
@@ -67,8 +64,24 @@ public class CustomerSupplierRelations {
     public CustomerSupplierRelations()
             throws SQLException {
 
-        // TODO begin
-        // TODO end
+        connection = SQLConnector.getTestInstance().getConnection();
+        String stmt = "SELECT x.kunde AS \"kunde\", x.knr AS \"knr\", x.lieferant AS \"lieferant\", x.lnr AS \"lnr\"\n" +
+                "FROM (\n" +
+                "\tSELECT DISTINCT Kunde.name AS kunde, Kunde.nr AS knr, Lieferant.name AS lieferant, Lieferant.nr AS lnr, Auftrag.auftrnr FROM Lieferung\n" +
+                "\tJOIN LIEFERANT\n" +
+                "\tON  Lieferant.nr = Lieferung.liefnr\n" +
+                "\tINNER JOIN teilestamm \n" +
+                "\tON teilestamm.teilnr = Lieferung.teilnr\n" +
+                "\tINNER JOIN Auftragsposten\n" +
+                "\tON Auftragsposten.teilnr = teilestamm.teilnr\n" +
+                "\tINNER JOIN Auftrag\n" +
+                "\tON Auftrag.auftrnr = Auftragsposten.auftrnr\n" +
+                "\tRIGHT OUTER JOIN Kunde\n" +
+                "\tON Kunde.nr = Auftrag.kundnr\n" +
+                "\t) AS x WHERE x.knr = ?" + "OR 1 = ?" +
+                "\tORDER BY x.kunde";
+        stmtKundeLieferanten = connection.prepareStatement(stmt);
+
     }
 
     /**
@@ -85,9 +98,14 @@ public class CustomerSupplierRelations {
      * @throws SQLException Falls das ausgeführe Statement scheitert
      */
     public ResultSet getKundeLieferanten(int kdNr) throws SQLException {
-        // TODO begin
-        return null;
-        // TODO end
+        stmtKundeLieferanten.setInt(1,kdNr);
+        if (kdNr <= 0) {
+            stmtKundeLieferanten.setInt(2,1);
+        }
+        else {
+            stmtKundeLieferanten.setInt(2,0);
+        }
+        return stmtKundeLieferanten.executeQuery();
     }
 
 
@@ -96,8 +114,31 @@ public class CustomerSupplierRelations {
      */
     public void close() throws SQLException {
         // Hinweis: Stellen Sie sicher, dass dies wirklich aufgerufen wird.
-        // TODO begin
-        // TODO end
+        if (!connection.isClosed()) {
+            connection.close();
+            System.out.println("Connection successfully closed.");
+        }
+        else {
+            System.out.println("Connection was not open.");
+        }
+
+        if (!stmtKundeLieferanten.isClosed()) {
+            stmtKundeLieferanten.close();
+            System.out.println("Statement successfully closed.");
+        }
+        else {
+            System.out.println("Statement was not open.");
+        }
+
+        /* Redundant, da ResultSet mit dem statement automatisch geschlossen wird.
+        if (!rs.isClosed()) {
+            rs.close();
+            System.out.println("ResultSet successfully closed.");
+        }
+        else {
+            System.out.println("ResultSet was not open.");
+        }
+        */
     }
 
     /**
@@ -117,8 +158,8 @@ public class CustomerSupplierRelations {
         Output.resultToCsv(rs, System.out);
 
         // Hinweis: schließen sie alle Ressourcen
-        // TODO begin
-        // TODO end
+        //System.out.println(rs.isClosed());
+        csr.close();
     }
 
 }
